@@ -9,9 +9,11 @@
 import UIKit
 import Parse
 
-class UserTVC: UITableViewController {
+class UserTVC: UITableViewController, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
 
     var usernames: [String]!
+    
+    var recipientUsername: String!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,6 +21,7 @@ class UserTVC: UITableViewController {
         self.navigationController?.navigationBar.isHidden = false
         
         usernames = [String]()
+        
         let query = PFUser.query()
         query?.whereKey("username", notEqualTo: (PFUser.current()?.username)!)
         
@@ -71,6 +74,61 @@ class UserTVC: UITableViewController {
             
             self.navigationController?.navigationBar.isHidden = true
         }
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        recipientUsername = usernames[indexPath.row]
+        
+        let imagePicker = UIImagePickerController()
+        imagePicker.delegate = self
+        imagePicker.sourceType = .photoLibrary
+        imagePicker.allowsEditing = true
+        
+        self.present(imagePicker, animated: true, completion: nil)
+        
+    }
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
+        
+        if let image = info[UIImagePickerControllerEditedImage] as? UIImage {
+            
+            print("Image returned")
+            
+            let imageToSend = PFObject(className: "Image")
+            imageToSend["photo"] = PFFile(name: "photo.jpg", data: UIImageJPEGRepresentation(image, 0.5)!)
+            
+            imageToSend["senderUsername"] = PFUser.current()?.username
+            imageToSend["recipientUsername"] = recipientUsername
+            
+            imageToSend.saveInBackground(block: { (success, error) in
+                
+                if success {
+                    
+                    self.showErrorAlert(title: "Message Sent!", message: "Your message has been sent")
+                    
+                } else {
+                    
+                    self.showErrorAlert(title: "Sending Failed", message: "Please try again later")
+                    
+                }
+                
+            })
+            
+        }
+        
+        self.dismiss(animated: true, completion: nil)
+        
+    }
+    
+    
+    func showErrorAlert(title: String, message: String) {
+        
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let action = UIAlertAction(title: "OK", style: .default, handler: nil)
+        alert.addAction(action)
+        present(alert, animated: true, completion: nil)
+        
     }
 
 }
